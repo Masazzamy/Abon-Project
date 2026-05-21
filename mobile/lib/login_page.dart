@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'theme.dart';
 import 'dashboard_page.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -257,39 +259,144 @@ class _LoginFormState extends State<_LoginForm> {
     super.dispose();
   }
 
-  void _handleLogin() {
+  Future<void> _handleLogin() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isLoading = true;
       });
 
-      // Simulate network request
-      Future.delayed(const Duration(seconds: 2), () {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
+      try {
+        final url = Uri.parse('http://192.168.18.29:8000/api/login');
 
-          // Show elegant success snackbar
+        final response = await http.post(
+          url,
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: jsonEncode({
+            'email': _emailController.text.trim(),
+            'password': _passwordController.text,
+          }),
+        );
+
+        if (response.statusCode == 200) {
+          if (mounted) {
+            // Show elegant success snackbar
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                elevation: 4,
+                behavior: SnackBarBehavior.floating,
+                backgroundColor: AppTheme.successGreen,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                content: const Row(
+                  children: [
+                    Icon(Icons.check_circle_rounded, color: Colors.white, size: 28),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Berhasil Masuk',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              fontSize: 14,
+                            ),
+                          ),
+                          Text(
+                            'Selamat datang kembali di sistem Abon Salakopi!',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.white70,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+
+            // Navigate to Dashboard Page
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const DashboardPage(),
+              ),
+            );
+          }
+        } else {
+          final responseData = jsonDecode(response.body);
+          final String errorMessage = responseData['message'] ?? 'Email atau Password salah.';
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                elevation: 4,
+                behavior: SnackBarBehavior.floating,
+                backgroundColor: AppTheme.errorRed,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                content: Row(
+                  children: [
+                    const Icon(Icons.error_outline_rounded, color: Colors.white, size: 28),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'Gagal Masuk',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              fontSize: 14,
+                            ),
+                          ),
+                          Text(
+                            errorMessage,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.white70,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+        }
+      } catch (e) {
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               elevation: 4,
               behavior: SnackBarBehavior.floating,
-              backgroundColor: AppTheme.successGreen,
+              backgroundColor: AppTheme.errorRed,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
-              content: const Row(
+              content: Row(
                 children: [
-                  Icon(Icons.check_circle_rounded, color: Colors.white, size: 28),
-                  SizedBox(width: 12),
+                  const Icon(Icons.wifi_off_rounded, color: Colors.white, size: 28),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          'Berhasil Masuk',
+                        const Text(
+                          'Kesalahan Koneksi',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
@@ -297,8 +404,8 @@ class _LoginFormState extends State<_LoginForm> {
                           ),
                         ),
                         Text(
-                          'Selamat datang kembali di sistem Abon Salakopi!',
-                          style: TextStyle(
+                          'Gagal menghubungi server: $e',
+                          style: const TextStyle(
                             fontSize: 12,
                             color: Colors.white70,
                           ),
@@ -310,16 +417,14 @@ class _LoginFormState extends State<_LoginForm> {
               ),
             ),
           );
-
-          // Navigate to Dashboard Page
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const DashboardPage(),
-            ),
-          );
         }
-      });
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
     }
   }
 
