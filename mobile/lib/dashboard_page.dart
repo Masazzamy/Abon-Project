@@ -11,6 +11,46 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   int _currentIndex = 0;
 
+  // --- BONUS: Variabel data di bagian atas widget agar mudah diganti ---
+  String namaUser = "Masazzamy";
+  String penjualanHariIni = "-";
+  int jumlahTransaksi = 0;
+  int totalProduk = 0;
+  int stokMenipis = 0;
+  String totalMingguan = "-";
+  List<double> dataGrafik = [0, 0, 0, 0, 0, 0, 0];
+  List<Map<String, dynamic>> lowStockProducts = [];
+
+  // Fungsi untuk mensimulasikan data riil (memudahkan pengetesan/pengisian data klien)
+  void _simulasikanDataReal() {
+    setState(() {
+      penjualanHariIni = "1.250.000";
+      jumlahTransaksi = 45;
+      totalProduk = 12;
+      stokMenipis = 4;
+      totalMingguan = "8.450.000";
+      dataGrafik = [1.2, 2.4, 1.8, 3.8, 3.0, 5.2, 4.5];
+      lowStockProducts = [
+        {'name': 'Abon Sapi Original 250g', 'stock': 3},
+        {'name': 'Abon Ayam Pedas 150g', 'stock': 2},
+        {'name': 'Abon Sapi Spesial 100g', 'stock': 4},
+      ];
+    });
+  }
+
+  // Fungsi untuk mengosongkan data kembali ke keadaan awal (Empty State)
+  void _kosongkanData() {
+    setState(() {
+      penjualanHariIni = "-";
+      jumlahTransaksi = 0;
+      totalProduk = 0;
+      stokMenipis = 0;
+      totalMingguan = "-";
+      dataGrafik = [0, 0, 0, 0, 0, 0, 0];
+      lowStockProducts = [];
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -26,8 +66,8 @@ class _DashboardPageState extends State<DashboardPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // 1. Header Section
-                    const _HeaderSection(userName: 'Masazzamy'),
+                    // 1. Header Section (Tetap Sama)
+                    _HeaderSection(userName: namaUser),
 
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
@@ -35,15 +75,25 @@ class _DashboardPageState extends State<DashboardPage> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           // 2. Summary Cards Grid (2x2)
-                          const _SummaryCards(),
+                          _SummaryCards(
+                            penjualanHariIni: penjualanHariIni,
+                            jumlahTransaksi: jumlahTransaksi,
+                            totalProduk: totalProduk,
+                            stokMenipis: stokMenipis,
+                          ),
                           const SizedBox(height: 24),
 
-                          // 3. Weekly Sales Chart
-                          const _WeeklySalesChart(),
+                          // 3. Weekly Sales Chart dengan Empty State
+                          _WeeklySalesChart(
+                            totalMingguan: totalMingguan,
+                            dataGrafik: dataGrafik,
+                          ),
                           const SizedBox(height: 24),
 
-                          // 4. Low Stock Alert Section
-                          const _LowStockAlertSection(),
+                          // 4. Low Stock Alert Section dengan Empty State
+                          _LowStockAlertSection(
+                            lowStockProducts: lowStockProducts,
+                          ),
                         ],
                       ),
                     ),
@@ -54,7 +104,43 @@ class _DashboardPageState extends State<DashboardPage> {
           ],
         ),
       ),
-      // 5. Bottom Navigation Bar
+      // Floating Action Button untuk Simulasi Input Data Ril dari Client
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          if (jumlahTransaksi == 0) {
+            _simulasikanDataReal();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Simulasi data riil berhasil dimuat!'),
+                backgroundColor: Color(0xFF8B5E3C),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          } else {
+            _kosongkanData();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Dashboard kembali ke keadaan kosong (Empty State).'),
+                backgroundColor: Colors.grey,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        },
+        backgroundColor: const Color(0xFF8B5E3C),
+        icon: Icon(
+          jumlahTransaksi == 0 ? Icons.add_chart : Icons.layers_clear_outlined,
+          color: Colors.white,
+        ),
+        label: Text(
+          jumlahTransaksi == 0 ? 'Simulasikan Data' : 'Kosongkan Data',
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+      // 5. Bottom Navigation Bar (Tetap Sama)
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           boxShadow: [
@@ -211,7 +297,7 @@ class _HeaderSection extends StatelessWidget {
                     ),
                     child: Center(
                       child: Text(
-                        userName.substring(0, 1).toUpperCase(),
+                        userName.isNotEmpty ? userName.substring(0, 1).toUpperCase() : "M",
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -274,64 +360,74 @@ class _HeaderSection extends StatelessWidget {
 
 /// 2. SUMMARY CARDS SECTION (2x2 grid, card putih dengan shadow halus)
 class _SummaryCards extends StatelessWidget {
-  const _SummaryCards();
+  final String penjualanHariIni;
+  final int jumlahTransaksi;
+  final int totalProduk;
+  final int stokMenipis;
+
+  const _SummaryCards({
+    required this.penjualanHariIni,
+    required this.jumlahTransaksi,
+    required this.totalProduk,
+    required this.stokMenipis,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
         Row(
-          children: const [
+          children: [
             Expanded(
               child: _SummaryCard(
                 title: 'Penjualan Hari Ini',
-                value: 'Rp 1.250.000',
+                value: penjualanHariIni == "-" ? "Rp -" : "Rp $penjualanHariIni",
                 icon: Icons.payments_outlined,
-                iconBgColor: Color(0xFFFAF2EC),
-                iconColor: Color(0xFF8B5E3C),
-                statusLabel: 'Stabil dari kemarin',
+                iconBgColor: const Color(0xFFFAF2EC),
+                iconColor: const Color(0xFF8B5E3C),
+                statusLabel: penjualanHariIni == "-" ? "" : "Stabil dari kemarin",
                 statusColor: Colors.grey,
               ),
             ),
-            SizedBox(width: 16),
+            const SizedBox(width: 16),
             Expanded(
               child: _SummaryCard(
                 title: 'Transaksi',
-                value: '45',
+                value: jumlahTransaksi.toString(),
                 icon: Icons.receipt_long_outlined,
-                iconBgColor: Color(0xFFE8F5E9),
-                iconColor: Color(0xFF388E3C),
-                statusLabel: ' naik 12%',
-                statusColor: Color(0xFF388E3C),
-                statusIcon: Icons.trending_up_rounded,
+                iconBgColor: const Color(0xFFE8F5E9),
+                iconColor: const Color(0xFF388E3C),
+                statusLabel: jumlahTransaksi == 0 ? "" : " naik 12%",
+                statusColor: const Color(0xFF388E3C),
+                statusIcon: jumlahTransaksi == 0 ? null : Icons.trending_up_rounded,
               ),
             ),
           ],
         ),
         const SizedBox(height: 16),
         Row(
-          children: const [
+          children: [
             Expanded(
               child: _SummaryCard(
                 title: 'Total Produk',
-                value: '12',
+                value: totalProduk.toString(),
                 icon: Icons.grid_view_outlined,
-                iconBgColor: Color(0xFFFAF2EC),
-                iconColor: Color(0xFF8B5E3C),
-                statusLabel: '3 produk baru',
-                statusColor: Color(0xFF8B5E3C),
+                iconBgColor: const Color(0xFFFAF2EC),
+                iconColor: const Color(0xFF8B5E3C),
+                statusLabel: totalProduk == 0 ? "" : "3 produk baru",
+                statusColor: const Color(0xFF8B5E3C),
               ),
             ),
-            SizedBox(width: 16),
+            const SizedBox(width: 16),
             Expanded(
               child: _SummaryCard(
                 title: 'Stok Menipis',
-                value: '4',
+                value: stokMenipis.toString(),
                 icon: Icons.warning_amber_rounded,
-                iconBgColor: Color(0xFFFFEBEE),
-                iconColor: Color(0xFFD32F2F),
-                statusLabel: 'Perlu restock',
-                statusColor: Color(0xFFD32F2F),
+                iconBgColor: const Color(0xFFFFEBEE),
+                iconColor: const Color(0xFFD32F2F),
+                statusLabel: stokMenipis == 0 ? "" : "Perlu restock",
+                statusColor: const Color(0xFFD32F2F),
               ),
             ),
           ],
@@ -426,39 +522,51 @@ class _SummaryCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           // Status label
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (statusIcon != null) ...[
-                Icon(
-                  statusIcon,
-                  color: statusColor,
-                  size: 14,
+          if (statusLabel.isNotEmpty)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (statusIcon != null) ...[
+                  Icon(
+                    statusIcon,
+                    color: statusColor,
+                    size: 14,
+                  ),
+                  const SizedBox(width: 2),
+                ],
+                Text(
+                  statusLabel,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: statusColor,
+                  ),
                 ),
-                const SizedBox(width: 2),
               ],
-              Text(
-                statusLabel,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: statusColor,
-                ),
-              ),
-            ],
-          ),
+            )
+          else
+            const SizedBox(height: 14), // Keeps layout height stable
         ],
       ),
     );
   }
 }
 
-/// 3. WEEKLY SALES CHART
+/// 3. WEEKLY SALES CHART (with elegant empty state option)
 class _WeeklySalesChart extends StatelessWidget {
-  const _WeeklySalesChart();
+  final String totalMingguan;
+  final List<double> dataGrafik;
+
+  const _WeeklySalesChart({
+    required this.totalMingguan,
+    required this.dataGrafik,
+  });
 
   @override
   Widget build(BuildContext context) {
+    // Check if the chart data is empty (all entries are 0)
+    final bool isChartEmpty = dataGrafik.every((value) => value == 0);
+
     return Container(
       padding: const EdgeInsets.all(20.0),
       decoration: BoxDecoration(
@@ -504,9 +612,9 @@ class _WeeklySalesChart extends StatelessWidget {
                   ),
                 ],
               ),
-              const Text(
-                'Rp 8.450.000',
-                style: TextStyle(
+              Text(
+                totalMingguan == "-" ? "Rp -" : "Rp $totalMingguan",
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF8B5E3C),
@@ -515,147 +623,171 @@ class _WeeklySalesChart extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 24),
-          // fl_chart container
+          // fl_chart container or proper Empty State
           SizedBox(
             height: 180,
-            child: LineChart(
-              LineChartData(
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  getDrawingHorizontalLine: (value) {
-                    return FlLine(
-                      color: Colors.grey.withAlpha(15),
-                      strokeWidth: 1,
-                    );
-                  },
-                ),
-                titlesData: FlTitlesData(
-                  show: true,
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 24,
-                      interval: 1,
-                      getTitlesWidget: (value, meta) {
-                        const style = TextStyle(
-                          color: Color(0xFF8A8A8A),
-                          fontWeight: FontWeight.w600,
-                          fontSize: 11,
-                        );
-                        Widget text;
-                        switch (value.toInt()) {
-                          case 0:
-                            text = const Text('Sen', style: style);
-                            break;
-                          case 1:
-                            text = const Text('Sel', style: style);
-                            break;
-                          case 2:
-                            text = const Text('Rab', style: style);
-                            break;
-                          case 3:
-                            text = const Text('Kam', style: style);
-                            break;
-                          case 4:
-                            text = const Text('Jum', style: style);
-                            break;
-                          case 5:
-                            text = const Text('Sab', style: style);
-                            break;
-                          case 6:
-                            text = const Text('Min', style: style);
-                            break;
-                          default:
-                            text = const Text('', style: style);
-                            break;
-                        }
-                        return SideTitleWidget(
-                          meta: meta,
-                          space: 6,
-                          child: text,
-                        );
-                      },
-                    ),
-                  ),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      interval: 1.5,
-                      reservedSize: 32,
-                      getTitlesWidget: (value, meta) {
-                        const style = TextStyle(
-                          color: Color(0xFF8A8A8A),
-                          fontSize: 10,
-                          fontWeight: FontWeight.w500,
-                        );
-                        if (value == 0) return const SizedBox();
-                        return SideTitleWidget(
-                          meta: meta,
-                          space: 4,
-                          child: Text('${value.toStringAsFixed(1)}Jt', style: style),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                borderData: FlBorderData(show: false),
-                minX: 0,
-                maxX: 6,
-                minY: 0,
-                maxY: 6,
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: const [
-                      FlSpot(0, 1.2),
-                      FlSpot(1, 2.4),
-                      FlSpot(2, 1.8),
-                      FlSpot(3, 3.8),
-                      FlSpot(4, 3.0),
-                      FlSpot(5, 5.2),
-                      FlSpot(6, 4.5),
+            child: isChartEmpty
+                ? Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.bar_chart_outlined,
+                        color: Colors.grey[400],
+                        size: 48,
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Belum ada data penjualan',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF9E9E9E),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Data akan muncul setelah transaksi pertama',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF9E9E9E),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
                     ],
-                    isCurved: true,
-                    gradient: const LinearGradient(
-                      colors: [
-                        Color(0xFF8B5E3C),
-                        Color(0xFFD4A35B),
+                  )
+                : LineChart(
+                    LineChartData(
+                      gridData: FlGridData(
+                        show: true,
+                        drawVerticalLine: false,
+                        getDrawingHorizontalLine: (value) {
+                          return FlLine(
+                            color: Colors.grey.withAlpha(15),
+                            strokeWidth: 1,
+                          );
+                        },
+                      ),
+                      titlesData: FlTitlesData(
+                        show: true,
+                        rightTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        topTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 24,
+                            interval: 1,
+                            getTitlesWidget: (value, meta) {
+                              const style = TextStyle(
+                                color: Color(0xFF8A8A8A),
+                                fontWeight: FontWeight.w600,
+                                fontSize: 11,
+                              );
+                              Widget text;
+                              switch (value.toInt()) {
+                                case 0:
+                                  text = const Text('Sen', style: style);
+                                  break;
+                                case 1:
+                                  text = const Text('Sel', style: style);
+                                  break;
+                                case 2:
+                                  text = const Text('Rab', style: style);
+                                  break;
+                                case 3:
+                                  text = const Text('Kam', style: style);
+                                  break;
+                                case 4:
+                                  text = const Text('Jum', style: style);
+                                  break;
+                                case 5:
+                                  text = const Text('Sab', style: style);
+                                  break;
+                                case 6:
+                                  text = const Text('Min', style: style);
+                                  break;
+                                default:
+                                  text = const Text('', style: style);
+                                  break;
+                              }
+                              return SideTitleWidget(
+                                meta: meta,
+                                space: 6,
+                                child: text,
+                              );
+                            },
+                          ),
+                        ),
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            interval: 1.5,
+                            reservedSize: 32,
+                            getTitlesWidget: (value, meta) {
+                              const style = TextStyle(
+                                color: Color(0xFF8A8A8A),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                              );
+                              if (value == 0) return const SizedBox();
+                              return SideTitleWidget(
+                                meta: meta,
+                                space: 4,
+                                child: Text('${value.toStringAsFixed(1)}Jt', style: style),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      borderData: FlBorderData(show: false),
+                      minX: 0,
+                      maxX: 6,
+                      minY: 0,
+                      maxY: 6,
+                      lineBarsData: [
+                        LineChartBarData(
+                          spots: List.generate(dataGrafik.length, (index) {
+                            return FlSpot(index.toDouble(), dataGrafik[index]);
+                          }),
+                          isCurved: true,
+                          gradient: const LinearGradient(
+                            colors: [
+                              Color(0xFF8B5E3C),
+                              Color(0xFFD4A35B),
+                            ],
+                          ),
+                          barWidth: 4,
+                          isStrokeCapRound: true,
+                          dotData: FlDotData(
+                            show: true,
+                            getDotPainter: (spot, percent, barData, index) {
+                              return FlDotCirclePainter(
+                                radius: 4,
+                                color: Colors.white,
+                                strokeWidth: 3,
+                                strokeColor: const Color(0xFF8B5E3C),
+                              );
+                            },
+                          ),
+                          belowBarData: BarAreaData(
+                            show: true,
+                            gradient: LinearGradient(
+                              colors: [
+                                const Color(0xFF8B5E3C).withAlpha(51),
+                                const Color(0xFFD4A35B).withAlpha(0),
+                              ],
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
-                    barWidth: 4,
-                    isStrokeCapRound: true,
-                    dotData: FlDotData(
-                      show: true,
-                      getDotPainter: (spot, percent, barData, index) {
-                        return FlDotCirclePainter(
-                          radius: 4,
-                          color: Colors.white,
-                          strokeWidth: 3,
-                          strokeColor: const Color(0xFF8B5E3C),
-                        );
-                      },
-                    ),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      gradient: LinearGradient(
-                        colors: [
-                          const Color(0xFF8B5E3C).withAlpha(51),
-                          const Color(0xFFD4A35B).withAlpha(0),
-                        ],
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                      ),
-                    ),
                   ),
-                ],
-              ),
-            ),
           ),
         ],
       ),
@@ -663,19 +795,14 @@ class _WeeklySalesChart extends StatelessWidget {
   }
 }
 
-/// 4. LOW STOCK ALERT SECTION
+/// 4. LOW STOCK ALERT SECTION (with proper empty state when list is empty)
 class _LowStockAlertSection extends StatelessWidget {
-  const _LowStockAlertSection();
+  final List<Map<String, dynamic>> lowStockProducts;
+
+  const _LowStockAlertSection({required this.lowStockProducts});
 
   @override
   Widget build(BuildContext context) {
-    // Dummy products data for warning
-    final List<Map<String, dynamic>> lowStockProducts = [
-      {'name': 'Abon Sapi Original 250g', 'stock': 3},
-      {'name': 'Abon Ayam Pedas 150g', 'stock': 2},
-      {'name': 'Abon Sapi Spesial 100g', 'stock': 4},
-    ];
-
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -695,47 +822,71 @@ class _LowStockAlertSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Header Merah Muda
+          // Header Peringatan Stok
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-            decoration: const BoxDecoration(
-              color: Color(0xFFFFF1F1), // Light pink/red background
-              borderRadius: BorderRadius.only(
+            decoration: BoxDecoration(
+              color: lowStockProducts.isEmpty ? const Color(0xFFF9F9F9) : const Color(0xFFFFF1F1),
+              borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(24.0),
                 topRight: Radius.circular(24.0),
               ),
             ),
             child: Row(
-              children: const [
+              children: [
                 Icon(
                   Icons.warning_amber_rounded,
-                  color: Color(0xFFD32F2F),
+                  color: lowStockProducts.isEmpty ? Colors.grey : const Color(0xFFD32F2F),
                   size: 22,
                 ),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 Text(
                   'Peringatan Stok Menipis',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFFD32F2F),
+                    color: lowStockProducts.isEmpty ? Colors.grey[700] : const Color(0xFFD32F2F),
                   ),
                 ),
               ],
             ),
           ),
-          // Product List
+          // Product List or proper Empty State
           Padding(
             padding: const EdgeInsets.all(12.0),
-            child: Column(
-              children: lowStockProducts.map((product) {
-                return _buildStockItem(
-                  context,
-                  product['name'] as String,
-                  product['stock'] as int,
-                );
-              }).toList(),
-            ),
+            child: lowStockProducts.isEmpty
+                ? Container(
+                    padding: const EdgeInsets.symmetric(vertical: 24.0),
+                    alignment: Alignment.center,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.inventory_2_outlined,
+                          color: Colors.grey[400],
+                          size: 40,
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'Semua stok aman',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF9E9E9E),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : Column(
+                    children: lowStockProducts.map((product) {
+                      return _buildStockItem(
+                        context,
+                        product['name'] as String,
+                        product['stock'] as int,
+                      );
+                    }).toList(),
+                  ),
           ),
         ],
       ),
