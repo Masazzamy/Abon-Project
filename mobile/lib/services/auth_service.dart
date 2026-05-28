@@ -1,11 +1,13 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
-  // Gunakan IP 10.0.2.2 untuk Android Emulator.
-  // Ganti ke 127.0.0.1 untuk iOS Simulator atau IP local komputer Anda (misal: 192.168.x.x) jika menggunakan HP fisik.
-  static const String defaultBaseUrl = 'http://10.0.2.2:8000/api';
+  // Gunakan IP 10.0.2.2 untuk Android Emulator, 127.0.0.1 untuk Web / iOS Simulator.
+  static const String defaultBaseUrl = kIsWeb
+      ? 'http://127.0.0.1:8000/api'
+      : 'http://10.0.2.2:8000/api';
 
   static Future<String> getBaseUrl() async {
     final prefs = await SharedPreferences.getInstance();
