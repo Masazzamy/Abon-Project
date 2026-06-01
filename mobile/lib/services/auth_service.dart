@@ -2,12 +2,10 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/api_config.dart';
 
 class AuthService {
-  // Gunakan IP 10.0.2.2 untuk Android Emulator, 127.0.0.1 untuk Web / iOS Simulator.
-  static const String defaultBaseUrl = kIsWeb
-      ? 'http://127.0.0.1:8000/api'
-      : 'http://10.0.2.2:8000/api';
+  static const String defaultBaseUrl = ApiConfig.defaultBaseUrl;
 
   static Future<String> getBaseUrl() async {
     final prefs = await SharedPreferences.getInstance();
@@ -240,5 +238,235 @@ class AuthService {
   Future<bool> isLoggedIn() async {
     final token = await getToken();
     return token != null;
+  }
+
+  /// Ambil data profil dan settings dari API
+  Future<Map<String, dynamic>> getProfile() async {
+    final baseUrl = await getBaseUrl();
+    final url = Uri.parse('$baseUrl/profile');
+    final token = await getToken();
+
+    if (token == null) {
+      return {
+        'success': false,
+        'message': 'Sesi telah berakhir. Silakan login kembali.'
+      };
+    }
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      final responseData = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && responseData['success'] == true) {
+        // Simpan data user terupdate di sesi lokal
+        final prefs = await SharedPreferences.getInstance();
+        final localUser = await getLocalUser() ?? {};
+        localUser['name'] = responseData['data']['user']['name'];
+        localUser['email'] = responseData['data']['user']['email'];
+        await prefs.setString('user_data', jsonEncode(localUser));
+
+        return {
+          'success': true,
+          'data': responseData['data']
+        };
+      } else {
+        return {
+          'success': false,
+          'message': responseData['message'] ?? 'Gagal memuat profil'
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Terjadi kesalahan koneksi server: $e'
+      };
+    }
+  }
+
+  /// Update data profil & settings ke API
+  Future<Map<String, dynamic>> updateProfile({
+    required String name,
+    required String email,
+    String? phone,
+    String? businessName,
+    String? businessAddress,
+    bool? darkMode,
+    bool? notificationsEnabled,
+  }) async {
+    final baseUrl = await getBaseUrl();
+    final url = Uri.parse('$baseUrl/profile');
+    final token = await getToken();
+
+    try {
+      final response = await http.put(
+        url,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'name': name,
+          'email': email,
+          'phone': phone,
+          'business_name': businessName,
+          'business_address': businessAddress,
+          'dark_mode': darkMode,
+          'notifications_enabled': notificationsEnabled,
+        }),
+      );
+
+      final responseData = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && responseData['success'] == true) {
+        // Simpan data user terupdate di sesi lokal
+        final prefs = await SharedPreferences.getInstance();
+        final localUser = await getLocalUser() ?? {};
+        localUser['name'] = responseData['data']['user']['name'];
+        localUser['email'] = responseData['data']['user']['email'];
+        await prefs.setString('user_data', jsonEncode(localUser));
+
+        return {
+          'success': true,
+          'message': responseData['message'] ?? 'Profil berhasil diperbarui',
+          'data': responseData['data']
+        };
+      } else {
+        return {
+          'success': false,
+          'message': responseData['message'] ?? 'Gagal memperbarui profil',
+          'errors': responseData['errors']
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Terjadi kesalahan koneksi server: $e'
+      };
+    }
+  }
+
+  /// Ubah password user
+  Future<Map<String, dynamic>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final baseUrl = await getBaseUrl();
+    final url = Uri.parse('$baseUrl/profile/password');
+    final token = await getToken();
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'current_password': currentPassword,
+          'new_password': newPassword,
+        }),
+      );
+
+      final responseData = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'message': responseData['message'] ?? 'Password berhasil diubah'
+        };
+      } else {
+        return {
+          'success': false,
+          'message': responseData['message'] ?? 'Gagal mengubah password',
+          'errors': responseData['errors']
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Terjadi kesalahan koneksi server: $e'
+      };
+    }
+  }
+
+  /// Upload foto profil
+  Future<Map<String, dynamic>> uploadPhoto(String filePath) async {
+    final baseUrl = await getBaseUrl();
+    final url = Uri.parse('$baseUrl/profile/photo');
+    final token = await getToken();
+
+    try {
+      final request = http.MultipartRequest('POST', url);
+      request.headers.addAll({
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $token',
+      });
+      request.files.add(await http.MultipartFile.fromPath('photo', filePath));
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      final responseData = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'message': responseData['message'] ?? 'Foto berhasil diunggah',
+          'photo_url': responseData['photo_url']
+        };
+      } else {
+        return {
+          'success': false,
+          'message': responseData['message'] ?? 'Gagal mengunggah foto'
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Terjadi kesalahan koneksi server: $e'
+      };
+    }
+  }
+
+  /// Ping Laravel API to test connection
+  Future<Map<String, dynamic>> pingServer() async {
+    final baseUrl = await getBaseUrl();
+    final url = Uri.parse('$baseUrl/ping');
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Accept': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 5));
+
+      final responseData = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'message': responseData['message'] ?? 'Koneksi Berhasil',
+          'time': responseData['time'] ?? '',
+        };
+      } else {
+        return {
+          'success': false,
+          'message': 'Gagal terhubung. Status: ${response.statusCode}',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Server tidak merespon (Offline). Pastikan Laptop & HP tersambung ke WiFi yang sama. Detail: $e',
+      };
+    }
   }
 }

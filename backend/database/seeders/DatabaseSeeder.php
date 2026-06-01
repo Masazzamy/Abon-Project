@@ -17,11 +17,19 @@ class DatabaseSeeder extends Seeder
     {
         // User::factory(10)->create();
 
-        User::create([
+        $user = User::create([
             'name' => 'Admin',
             'email' => 'admin@abon.com',
             'password' => \Illuminate\Support\Facades\Hash::make('password'),
             'role' => 'admin',
+        ]);
+
+        $user->profile()->create([
+            'phone' => '081234567890',
+            'business_name' => 'Abon Salakopi',
+            'business_address' => 'Jl. Salakopi No. 12, Tasikmalaya, Jawa Barat',
+            'dark_mode' => false,
+            'notifications_enabled' => true,
         ]);
     }
 }

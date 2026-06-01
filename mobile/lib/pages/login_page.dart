@@ -127,6 +127,92 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  Future<void> _testConnection() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF5722)),
+        ),
+      ),
+    );
+
+    final response = await _authService.pingServer();
+    
+    if (mounted) {
+      Navigator.pop(context); // Close loading indicator
+      
+      if (response['success'] == true) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: const [
+                Icon(Icons.check_circle_rounded, color: Colors.green, size: 28),
+                SizedBox(width: 8),
+                Text('Koneksi Sukses', style: TextStyle(fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: Text(
+              '${response['message']}\n\nWaktu Server: ${response['time']}',
+              style: const TextStyle(fontSize: 13, height: 1.4),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK', style: TextStyle(color: Color(0xFFFF5722), fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        );
+      } else {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: const [
+                Icon(Icons.error_rounded, color: Colors.red, size: 28),
+                SizedBox(width: 8),
+                Text('Koneksi Gagal', style: TextStyle(fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  response['message'] ?? 'Tidak dapat terhubung ke server Laravel.',
+                  style: const TextStyle(fontSize: 13, height: 1.4),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  '💡 Langkah Solusi:',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFFFF5722)),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  '1. Hubungkan HP Android dan Laptop ke jaringan Wi-Fi/Hotspot yang SAMA.\n'
+                  '2. Jalankan project lewat file "start_project.bat" di folder root.\n'
+                  '3. Pastikan Windows Firewall Anda mengizinkan port 8000.',
+                  style: TextStyle(fontSize: 12, color: Colors.black54, height: 1.45),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Tutup', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -264,6 +350,21 @@ class _LoginPageState extends State<LoginPage> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(30),
                       ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    onPressed: _testConnection,
+                    icon: const Icon(Icons.wifi_find_rounded, size: 16),
+                    label: const Text('TEST KONEKSI SERVER', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue.shade800,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      elevation: 1,
                     ),
                   ),
                 ],
