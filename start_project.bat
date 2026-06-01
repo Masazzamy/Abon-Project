@@ -22,7 +22,7 @@ echo.
 
 :: 2. Update Config API Flutter
 echo [2/5] Memperbarui konfigurasi API Flutter...
-powershell -NoProfile -Command "(Get-Content -Path 'mobile/lib/config/api_config.dart') -replace 'static const String localIp = \'.*?\';', 'static const String localIp = ''%LOCAL_IP%'';' | Set-Content -Path 'mobile/lib/config/api_config.dart'"
+powershell -NoProfile -Command "(Get-Content -Path 'mobile/lib/config/api_config.dart') -replace 'static const String localIp = ''.*?'';', 'static const String localIp = ''%LOCAL_IP%'';' | Set-Content -Path 'mobile/lib/config/api_config.dart'"
 if %errorlevel% equ 0 (
     echo [SUCCESS] File 'mobile/lib/config/api_config.dart' berhasil di-update.
 ) else (

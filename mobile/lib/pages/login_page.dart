@@ -66,6 +66,22 @@ class _LoginPageState extends State<LoginPage> {
           ),
           actions: [
             TextButton(
+              onPressed: () async {
+                await AuthService.resetBaseUrl();
+                final defaultUrl = await AuthService.getBaseUrl();
+                setState(() {
+                  _currentBaseUrl = defaultUrl;
+                });
+                if (mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('API URL di-reset ke default launcher')),
+                  );
+                }
+              },
+              child: const Text('Reset Default', style: TextStyle(color: Colors.orange)),
+            ),
+            TextButton(
               onPressed: () => Navigator.pop(context),
               child: const Text('Batal'),
             ),

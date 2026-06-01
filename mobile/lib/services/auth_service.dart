@@ -9,12 +9,23 @@ class AuthService {
 
   static Future<String> getBaseUrl() async {
     final prefs = await SharedPreferences.getInstance();
+    final isCustom = prefs.getBool('is_custom_api_url') ?? false;
+    if (!isCustom) {
+      return defaultBaseUrl;
+    }
     return prefs.getString('api_base_url') ?? defaultBaseUrl;
   }
 
   static Future<void> setBaseUrl(String url) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('api_base_url', url);
+    await prefs.setBool('is_custom_api_url', true);
+  }
+
+  static Future<void> resetBaseUrl() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('api_base_url');
+    await prefs.setBool('is_custom_api_url', false);
   }
 
   /// Register new user
