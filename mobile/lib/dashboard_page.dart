@@ -1,5 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'app_colors.dart';
+import 'inventaris_page.dart';
+import 'penjualan_page.dart';
+import 'pergerakan_page.dart';
+import 'laporan_page.dart';
+import 'profile_page.dart';
+import 'notifikasi_page.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -10,6 +17,7 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   int _currentIndex = 0;
+  int _unreadCount = 4;
 
   // --- BONUS: Variabel data di bagian atas widget agar mudah diganti ---
   String namaUser = "Masazzamy";
@@ -51,95 +59,140 @@ class _DashboardPageState extends State<DashboardPage> {
     });
   }
 
+  Widget _buildHomeTab() {
+    return SafeArea(
+      top: false, // Let header gradient flow into status bar
+      child: Column(
+        children: [
+          // Scrollable Content
+          Expanded(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // 1. Header Section
+                  _HeaderSection(
+                    userName: namaUser,
+                    unreadCount: _unreadCount,
+                    onNotificationPressed: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const NotifikasiPage()),
+                      );
+                      setState(() {
+                        _unreadCount = 0;
+                      });
+                    },
+                  ),
+
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // 2. Summary Cards Grid (2x2)
+                        _SummaryCards(
+                          penjualanHariIni: penjualanHariIni,
+                          jumlahTransaksi: jumlahTransaksi,
+                          totalProduk: totalProduk,
+                          stokMenipis: stokMenipis,
+                        ),
+                        const SizedBox(height: 24),
+
+                        // 3. Weekly Sales Chart dengan Empty State
+                        _WeeklySalesChart(
+                          totalMingguan: totalMingguan,
+                          dataGrafik: dataGrafik,
+                        ),
+                        const SizedBox(height: 24),
+
+                        // 4. Low Stock Alert Section dengan Empty State
+                        _LowStockAlertSection(
+                          lowStockProducts: lowStockProducts,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlaceholderTab(String title, IconData icon) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 64, color: AppColors.textGrey),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textGrey),
+          ),
+          const SizedBox(height: 8),
+          const Text('Halaman ini sedang dalam pengembangan.', style: TextStyle(color: AppColors.textGrey)),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SafeArea(
-        top: false, // Let header gradient flow into status bar
-        child: Column(
-          children: [
-            // Scrollable Content
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // 1. Header Section (Tetap Sama)
-                    _HeaderSection(userName: namaUser),
-
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          // 2. Summary Cards Grid (2x2)
-                          _SummaryCards(
-                            penjualanHariIni: penjualanHariIni,
-                            jumlahTransaksi: jumlahTransaksi,
-                            totalProduk: totalProduk,
-                            stokMenipis: stokMenipis,
-                          ),
-                          const SizedBox(height: 24),
-
-                          // 3. Weekly Sales Chart dengan Empty State
-                          _WeeklySalesChart(
-                            totalMingguan: totalMingguan,
-                            dataGrafik: dataGrafik,
-                          ),
-                          const SizedBox(height: 24),
-
-                          // 4. Low Stock Alert Section dengan Empty State
-                          _LowStockAlertSection(
-                            lowStockProducts: lowStockProducts,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
+      body: IndexedStack(
+        index: _currentIndex,
+        children: [
+          _buildHomeTab(),
+          const InventarisPage(),
+          const PenjualanPage(),
+          const PergerakanPage(),
+          const LaporanPage(),
+        ],
       ),
       // Floating Action Button untuk Simulasi Input Data Ril dari Client
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          if (jumlahTransaksi == 0) {
-            _simulasikanDataReal();
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Simulasi data riil berhasil dimuat!'),
-                backgroundColor: Color(0xFF8B5E3C),
-                behavior: SnackBarBehavior.floating,
+      floatingActionButton: _currentIndex == 0
+          ? FloatingActionButton.extended(
+              onPressed: () {
+                if (jumlahTransaksi == 0) {
+                  _simulasikanDataReal();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Simulasi data riil berhasil dimuat!'),
+                      backgroundColor: AppColors.primary,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                } else {
+                  _kosongkanData();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Dashboard kembali ke keadaan kosong (Empty State).'),
+                      backgroundColor: AppColors.textGrey,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              },
+              backgroundColor: AppColors.primary,
+              icon: Icon(
+                jumlahTransaksi == 0 ? Icons.add_chart : Icons.layers_clear_outlined,
+                color: Colors.white,
               ),
-            );
-          } else {
-            _kosongkanData();
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Dashboard kembali ke keadaan kosong (Empty State).'),
-                backgroundColor: Colors.grey,
-                behavior: SnackBarBehavior.floating,
+              label: Text(
+                jumlahTransaksi == 0 ? 'Simulasikan Data' : 'Kosongkan Data',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            );
-          }
-        },
-        backgroundColor: const Color(0xFF8B5E3C),
-        icon: Icon(
-          jumlahTransaksi == 0 ? Icons.add_chart : Icons.layers_clear_outlined,
-          color: Colors.white,
-        ),
-        label: Text(
-          jumlahTransaksi == 0 ? 'Simulasikan Data' : 'Kosongkan Data',
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
+            )
+          : null,
       // 5. Bottom Navigation Bar (Tetap Sama)
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
@@ -160,7 +213,7 @@ class _DashboardPageState extends State<DashboardPage> {
           },
           type: BottomNavigationBarType.fixed,
           backgroundColor: Colors.white,
-          selectedItemColor: const Color(0xFF8B5E3C), // Coklat keemasan active color
+          selectedItemColor: AppColors.primary, // Coklat keemasan active color
           unselectedItemColor: Colors.grey[500],
           selectedFontSize: 12,
           unselectedFontSize: 12,
@@ -202,8 +255,14 @@ class _DashboardPageState extends State<DashboardPage> {
 /// 1. HEADER SECTION (with background gradient coklat keemasan)
 class _HeaderSection extends StatelessWidget {
   final String userName;
+  final int unreadCount;
+  final VoidCallback onNotificationPressed;
 
-  const _HeaderSection({required this.userName});
+  const _HeaderSection({
+    required this.userName,
+    required this.unreadCount,
+    required this.onNotificationPressed,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -261,47 +320,66 @@ class _HeaderSection extends StatelessWidget {
                   Stack(
                     children: [
                       IconButton(
-                        onPressed: () {},
+                        onPressed: onNotificationPressed,
                         icon: const Icon(
                           Icons.notifications_none_rounded,
                           color: Colors.white,
                           size: 28,
                         ),
                       ),
-                      Positioned(
-                        right: 8,
-                        top: 8,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
+                      if (unreadCount > 0)
+                        Positioned(
+                          right: 8,
+                          top: 8,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 16,
+                              minHeight: 16,
+                            ),
+                            child: Center(
+                              child: Text(
+                                unreadCount.toString(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
                           ),
-                          constraints: const BoxConstraints(
-                            minWidth: 10,
-                            minHeight: 10,
-                          ),
-                        ),
-                      )
+                        )
                     ],
                   ),
                   const SizedBox(width: 8),
                   // User Avatar
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withAlpha(51),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white.withAlpha(128), width: 2),
-                    ),
-                    child: Center(
-                      child: Text(
-                        userName.isNotEmpty ? userName.substring(0, 1).toUpperCase() : "M",
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ProfilePage()),
+                      );
+                    },
+                    child: Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withAlpha(51),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white.withAlpha(128), width: 2),
+                      ),
+                      child: Center(
+                        child: Text(
+                          userName.isNotEmpty ? userName.substring(0, 1).toUpperCase() : "M",
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),

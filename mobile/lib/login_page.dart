@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'theme.dart';
 import 'dashboard_page.dart';
+import 'daftar_page.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
@@ -358,7 +359,7 @@ class _LoginFormState extends State<_LoginForm> {
 
       try {
         // Alamat IP server backend aktif
-        const String localIp = '10.178.53.182'; 
+        const String localIp = '10.155.21.36'; 
         
         String baseUrl;
         if (kIsWeb) {
@@ -778,14 +779,9 @@ class _FooterSection extends StatelessWidget {
         // Outline container for "Belum punya akun? Daftar"
         GestureDetector(
           onTap: () {
-            // Show info snackbar for registration flow
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Fitur pendaftaran akun sedang dikembangkan. Silakan hubungi admin.',
-                ),
-                behavior: SnackBarBehavior.floating,
-              ),
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const DaftarPage()),
             );
           },
           child: Container(

@@ -1,21 +1,22 @@
 import 'package:flutter/material.dart';
+import 'app_colors.dart';
 
 class AppTheme {
   AppTheme._();
 
   // Colors based on Abon Theme (Golden Brown & White)
-  static const Color primaryBrown = Color(0xFF8C5228);      // Abon Golden Brown
-  static const Color accentGold = Color(0xFFD4A35B);        // Golden Yellow Highlight
+  static const Color primaryBrown = AppColors.primary;      // Abon Golden Brown
+  static const Color accentGold = AppColors.accent;        // Golden Yellow Highlight
   static const Color primaryBrownLight = Color(0xFFA66D44); // Light warm brown
   static const Color primaryBrownDark = Color(0xFF5C3314);  // Dark brown for depth
   
   static const Color textPrimary = Color(0xFF2C2C2C);       // Dark charcoal text
-  static const Color textSecondary = Color(0xFF757575);     // Neutral grey text
-  static const Color bgLight = Colors.white;                // Clean white background
+  static const Color textSecondary = AppColors.textGrey;     // Neutral grey text
+  static const Color bgLight = AppColors.background;                // Clean white background
   static const Color surfaceWhite = Colors.white;
   
-  static const Color errorRed = Color(0xFFD32F2F);
-  static const Color successGreen = Color(0xFF388E3C);
+  static const Color errorRed = AppColors.alert;
+  static const Color successGreen = AppColors.success;
 
   static ThemeData get lightTheme {
     return ThemeData(
