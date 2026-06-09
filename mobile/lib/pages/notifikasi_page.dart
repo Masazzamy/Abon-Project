@@ -1644,7 +1644,7 @@ class _NotificationSettingPageState extends State<_NotificationSettingPage> {
               ),
             ),
         ],
-        border: Border(bottom: BorderSide(color: Colors.grey.shade200, width: 1)),
+        shape: Border(bottom: BorderSide(color: Colors.grey.shade200, width: 1)),
       ),
       body: _isLoading
           ? const Center(

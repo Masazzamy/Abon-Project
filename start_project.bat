@@ -20,11 +20,16 @@ if "%LOCAL_IP%"=="" (
 )
 echo.
 
-:: 2. Update Config API Flutter
-echo [2/5] Memperbarui konfigurasi API Flutter...
+:: 2. Update Config API Flutter & Backend .env
+echo [2/5] Memperbarui konfigurasi IP API Flutter & Backend .env...
 powershell -NoProfile -Command "(Get-Content -Path 'mobile/lib/config/api_config.dart') -replace 'static const String localIp = ''.*?'';', 'static const String localIp = ''%LOCAL_IP%'';' | Set-Content -Path 'mobile/lib/config/api_config.dart'"
+powershell -NoProfile -Command "(Get-Content -Path 'backend/.env') -replace 'APP_URL=http://.*', 'APP_URL=http://%LOCAL_IP%:8000' | Set-Content -Path 'backend/.env'"
 if %errorlevel% equ 0 (
-    echo [SUCCESS] File 'mobile/lib/config/api_config.dart' berhasil di-update.
+    echo [SUCCESS] Konfigurasi IP pada Flutter & .env Backend berhasil di-update.
+    :: Clear Laravel config cache
+    cd backend
+    php artisan config:clear >nul
+    cd ..
 ) else (
     echo [ERROR] Gagal memperbarui config file. Pastikan struktur project sudah benar.
 )

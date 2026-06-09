@@ -509,7 +509,7 @@ class _ProfilePageState extends State<ProfilePage> {
               setState(() => _isSaving = true);
               
               // We'll update the profile photo_path with the URL directly using the updateProfile route
-              final response = await _authService.updateProfile(
+              await _authService.updateProfile(
                 name: _ownerName,
                 email: _email,
                 phone: _phone,

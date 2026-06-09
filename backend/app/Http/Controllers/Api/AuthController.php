@@ -17,10 +17,13 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $validator = Validator::make($request->all(), [
+            // Step 1: Account
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:6',
-            'role' => 'nullable|string|in:admin,owner,staff',
+            'password' => 'required|string|min:8',
+            'phone' => 'required|string|min:10',
+            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'role' => 'required|string|in:ceo,manager,admin,cashier,warehouse,employee',
         ]);
 
         if ($validator->fails()) {
@@ -31,17 +34,35 @@ class AuthController extends Controller
             ], 422);
         }
 
+        // Store user avatar
+        $photoPath = null;
+        if ($request->hasFile('photo')) {
+            $photoPath = $request->file('photo')->store('profile_photos', 'public');
+        }
+
+        // Create User
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role' => $request->role ?? 'owner',
+            'role' => $request->role,
         ]);
+
+        // Create User Profile
+        $user->profile()->create([
+            'phone' => $request->phone,
+            'photo_path' => $photoPath,
+            'business_name' => 'Abon Salakopi',
+        ]);
+
+        // Auto Generate Sanctum Token
+        $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
             'success' => true,
             'message' => 'Registrasi berhasil',
-            'data' => $user
+            'token' => $token,
+            'user' => $user->load('profile')
         ], 201);
     }
 
@@ -79,7 +100,7 @@ class AuthController extends Controller
             'success' => true,
             'message' => 'Login berhasil',
             'token' => $token,
-            'user' => $user
+            'user' => $user->load('profile')
         ], 200);
     }
 
@@ -105,7 +126,7 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Data user berhasil diambil',
-            'data' => $request->user()
+            'data' => $request->user()->load('profile')
         ], 200);
     }
 }

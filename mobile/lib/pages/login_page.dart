@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../widgets/abon_logo.dart';
+import '../app_colors.dart';
+import '../providers/user_provider.dart';
 import 'dashboard_page.dart';
+import 'daftar_page.dart';
+import 'lupa_password_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -45,6 +50,7 @@ class _LoginPageState extends State<LoginPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Text('Ganti Base URL API'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -52,14 +58,14 @@ class _LoginPageState extends State<LoginPage> {
             children: [
               const Text(
                 'Sesuaikan IP address backend Laravel Anda.',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
+                style: TextStyle(fontSize: 12, color: AppColors.textGrey),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: controller,
                 decoration: const InputDecoration(
                   labelText: 'URL API',
-                  hintText: 'http://10.0.2.2:8000/api',
+                  hintText: 'http://10.175.124.237:8000/api',
                 ),
               ),
             ],
@@ -79,7 +85,7 @@ class _LoginPageState extends State<LoginPage> {
                   );
                 }
               },
-              child: const Text('Reset Default', style: TextStyle(color: Colors.orange)),
+              child: const Text('Reset Default', style: TextStyle(color: AppColors.primary)),
             ),
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -120,10 +126,17 @@ class _LoginPageState extends State<LoginPage> {
 
     if (mounted) {
       if (result['success']) {
+        // Sync user data to UserProvider
+        final userData = result['user'];
+        if (userData != null && userData is Map<String, dynamic>) {
+          await Provider.of<UserProvider>(context, listen: false)
+              .syncFromBackend(userData);
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message']),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -135,7 +148,7 @@ class _LoginPageState extends State<LoginPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message']),
-            backgroundColor: Colors.redAccent,
+            backgroundColor: AppColors.alert,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -149,7 +162,7 @@ class _LoginPageState extends State<LoginPage> {
       barrierDismissible: false,
       builder: (context) => const Center(
         child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF5722)),
+          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
         ),
       ),
     );
@@ -164,9 +177,9 @@ class _LoginPageState extends State<LoginPage> {
           context: context,
           builder: (context) => AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: Row(
-              children: const [
-                Icon(Icons.check_circle_rounded, color: Colors.green, size: 28),
+            title: const Row(
+              children: [
+                Icon(Icons.check_circle_rounded, color: AppColors.success, size: 28),
                 SizedBox(width: 8),
                 Text('Koneksi Sukses', style: TextStyle(fontWeight: FontWeight.bold)),
               ],
@@ -178,7 +191,7 @@ class _LoginPageState extends State<LoginPage> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('OK', style: TextStyle(color: Color(0xFFFF5722), fontWeight: FontWeight.bold)),
+                child: const Text('OK', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -188,9 +201,9 @@ class _LoginPageState extends State<LoginPage> {
           context: context,
           builder: (context) => AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: Row(
-              children: const [
-                Icon(Icons.error_rounded, color: Colors.red, size: 28),
+            title: const Row(
+              children: [
+                Icon(Icons.error_rounded, color: AppColors.alert, size: 28),
                 SizedBox(width: 8),
                 Text('Koneksi Gagal', style: TextStyle(fontWeight: FontWeight.bold)),
               ],
@@ -206,21 +219,21 @@ class _LoginPageState extends State<LoginPage> {
                 const SizedBox(height: 16),
                 const Text(
                   '💡 Langkah Solusi:',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFFFF5722)),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.primary),
                 ),
                 const SizedBox(height: 8),
                 const Text(
                   '1. Hubungkan HP Android dan Laptop ke jaringan Wi-Fi/Hotspot yang SAMA.\n'
                   '2. Jalankan project lewat file "start_project.bat" di folder root.\n'
                   '3. Pastikan Windows Firewall Anda mengizinkan port 8000.',
-                  style: TextStyle(fontSize: 12, color: Colors.black54, height: 1.45),
+                  style: TextStyle(fontSize: 12, color: AppColors.textDark, height: 1.45),
                 ),
               ],
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('Tutup', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                child: const Text('Tutup', style: TextStyle(color: AppColors.textGrey, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -232,7 +245,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -252,7 +265,7 @@ class _LoginPageState extends State<LoginPage> {
                     keyboardType: TextInputType.emailAddress,
                     decoration: const InputDecoration(
                       labelText: 'Email',
-                      prefixIcon: Icon(Icons.email_outlined, color: Color(0xFFFF5722)),
+                      prefixIcon: Icon(Icons.email_outlined, color: AppColors.primary),
                       hintText: 'nama@email.com',
                     ),
                     validator: (value) {
@@ -273,11 +286,11 @@ class _LoginPageState extends State<LoginPage> {
                     obscureText: _isObscure,
                     decoration: InputDecoration(
                       labelText: 'Password',
-                      prefixIcon: const Icon(Icons.lock_outline_rounded, color: Color(0xFFFF5722)),
+                      prefixIcon: const Icon(Icons.lock_outline_rounded, color: AppColors.primary),
                       suffixIcon: IconButton(
                         icon: Icon(
                           _isObscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                          color: Colors.grey,
+                          color: AppColors.textGrey,
                         ),
                         onPressed: () {
                           setState(() {
@@ -293,20 +306,41 @@ class _LoginPageState extends State<LoginPage> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 12),
+
+                  // Lupa Password link
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const LupaPasswordPage()),
+                        );
+                      },
+                      child: const Text(
+                        'Lupa Password?',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
 
                   // Login Button
                   ElevatedButton(
                     onPressed: _isLoading ? null : _handleLogin,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFF5722),
-                      foregroundColor: Colors.white,
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: AppColors.textLight,
                       padding: const EdgeInsets.symmetric(vertical: 18),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
                       elevation: 4,
-                      shadowColor: const Color(0xFFFF5722).withOpacity(0.4),
+                      shadowColor: AppColors.primary.withOpacity(0.4),
                     ),
                     child: _isLoading
                         ? const SizedBox(
@@ -328,21 +362,21 @@ class _LoginPageState extends State<LoginPage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
+                      const Text(
                         "Belum punya akun? ",
-                        style: TextStyle(color: Colors.grey.shade600),
+                        style: TextStyle(color: AppColors.textGrey),
                       ),
                       GestureDetector(
                         onTap: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => const RegisterPage()),
+                            MaterialPageRoute(builder: (context) => const DaftarPage()),
                           );
                         },
                         child: const Text(
                           'Daftar Sekarang',
                           style: TextStyle(
-                            color: Color(0xFFFF5722),
+                            color: AppColors.primary,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -361,8 +395,8 @@ class _LoginPageState extends State<LoginPage> {
                       style: const TextStyle(fontSize: 11),
                     ),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.grey.shade700,
-                      side: BorderSide(color: Colors.grey.shade300),
+                      foregroundColor: AppColors.textGrey,
+                      side: const BorderSide(color: AppColors.borderGrey),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(30),
                       ),
@@ -382,228 +416,6 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       elevation: 1,
                     ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class RegisterPage extends StatefulWidget {
-  const RegisterPage({super.key});
-
-  @override
-  State<RegisterPage> createState() => _RegisterPageState();
-}
-
-class _RegisterPageState extends State<RegisterPage> {
-  final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  String _selectedRole = 'owner';
-  final _authService = AuthService();
-  bool _isLoading = false;
-  bool _isObscure = true;
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _handleRegister() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _isLoading = true);
-
-    final result = await _authService.register(
-      name: _nameController.text.trim(),
-      email: _emailController.text.trim(),
-      password: _passwordController.text,
-      role: _selectedRole,
-    );
-
-    setState(() => _isLoading = false);
-
-    if (mounted) {
-      if (result['success']) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${result['message']}. Silakan login.'),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        Navigator.pop(context);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message']),
-            backgroundColor: Colors.redAccent,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Daftar Karyawan/Owner'),
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        foregroundColor: Colors.black,
-      ),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 28.0, vertical: 16.0),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text(
-                    'Pendaftaran Akun Baru',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFFFF5722),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Registrasikan akun untuk akses dashboard UMKM Abon',
-                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-                  ),
-                  const SizedBox(height: 36),
-
-                  // Name Input
-                  TextFormField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Nama Lengkap',
-                      prefixIcon: Icon(Icons.person_outline_rounded, color: Color(0xFFFF5722)),
-                      hintText: 'Nama lengkap Anda',
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Nama tidak boleh kosong';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 18),
-
-                  // Email Input
-                  TextFormField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      prefixIcon: Icon(Icons.email_outlined, color: Color(0xFFFF5722)),
-                      hintText: 'nama@email.com',
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Email tidak boleh kosong';
-                      }
-                      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                        return 'Format email tidak valid';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 18),
-
-                  // Password Input
-                  TextFormField(
-                    controller: _passwordController,
-                    obscureText: _isObscure,
-                    decoration: InputDecoration(
-                      labelText: 'Password',
-                      prefixIcon: const Icon(Icons.lock_outline_rounded, color: Color(0xFFFF5722)),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _isObscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                          color: Colors.grey,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _isObscure = !_isObscure;
-                          });
-                        },
-                      ),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Password tidak boleh kosong';
-                      }
-                      if (value.length < 6) {
-                        return 'Password minimal 6 karakter';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 18),
-
-                  // Role Selection Dropdown
-                  DropdownButtonFormField<String>(
-                    value: _selectedRole,
-                    decoration: const InputDecoration(
-                      labelText: 'Role Jabatan',
-                      prefixIcon: Icon(Icons.badge_outlined, color: Color(0xFFFF5722)),
-                    ),
-                    items: const [
-                      DropdownMenuItem(value: 'owner', child: Text('Owner (Pemilik)')),
-                      DropdownMenuItem(value: 'staff', child: Text('Staff (Karyawan)')),
-                      DropdownMenuItem(value: 'admin', child: Text('Administrator')),
-                    ],
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() {
-                          _selectedRole = value;
-                        });
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 36),
-
-                  // Register Button
-                  ElevatedButton(
-                    onPressed: _isLoading ? null : _handleRegister,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFF5722),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 18),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      elevation: 4,
-                      shadowColor: const Color(0xFFFF5722).withOpacity(0.4),
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 22,
-                            width: 22,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2.5,
-                            ),
-                          )
-                        : const Text(
-                            'DAFTAR SEKARANG',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.1),
-                          ),
                   ),
                 ],
               ),

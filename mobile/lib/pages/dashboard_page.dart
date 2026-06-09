@@ -1,8 +1,16 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:badges/badges.dart' as badges;
+import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
+import '../providers/user_provider.dart';
+import '../widgets/profil_avatar.dart';
+import '../widgets/access_denied_widget.dart';
+import '../helpers/waktu_helper.dart';
+import '../app_colors.dart';
 import 'login_page.dart';
+import 'inventaris_page.dart';
 import 'penjualan_page.dart';
 import 'pergerakan_page.dart';
 import 'laporan_page.dart';
@@ -19,72 +27,108 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   final _authService = AuthService();
   final _notificationService = NotificationService();
-  Map<String, dynamic>? _userLocalData;
   bool _isLoading = false;
   int _currentIndex = 0;
   int _unreadCount = 0;
 
-  // --- CLIENT DATA VARIABLES (EASY TO EDIT) ---
-  final String namaUser = "Masazzamy";
-  final String penjualanHariIni = "-";
+  // Real-time time & date states
+  String _timeString = '';
+  String _dateString = '';
+  Timer? _clockTimer;
+
+  // Local static counts/stats (defaults, can be updated via API sync)
+  final String penjualanHariIni = "Rp 0";
   final int jumlahTransaksi = 0;
   final int totalProduk = 0;
   final int stokMenipis = 0;
-  final String totalMingguan = "-";
-  final List<double> dataGrafik = [0, 0, 0, 0, 0, 0, 0];
+  final String totalMingguan = "Rp 0";
 
   @override
   void initState() {
     super.initState();
-    _loadUserSession();
+    _startClock();
+    // Delay context-dependent calls until after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _syncUserSession();
+        _loadUnreadCount();
+      }
+    });
   }
 
-  Future<void> _loadUserSession() async {
-    final localUser = await _authService.getLocalUser();
-    setState(() {
-      _userLocalData = localUser;
-    });
+  @override
+  void dispose() {
+    _clockTimer?.cancel();
+    super.dispose();
+  }
 
-    // Refresh user data from server
-    _refreshUserData();
+  void _startClock() {
+    _timeString = '${WaktuHelper.getJamSekarang()} ${WaktuHelper.getZonaWaktu()}';
+    _dateString = WaktuHelper.getTanggalLengkap();
+    _clockTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          _timeString = '${WaktuHelper.getJamSekarang()} ${WaktuHelper.getZonaWaktu()}';
+          _dateString = WaktuHelper.getTanggalLengkap();
+        });
+      }
+    });
+  }
+
+  Future<void> _syncUserSession() async {
+    try {
+      final response = await _authService.getUser();
+      if (!mounted) return;
+
+      if (response['success'] == true && response['data'] != null) {
+        final data = response['data'];
+        if (data is Map<String, dynamic>) {
+          await Provider.of<UserProvider>(context, listen: false)
+              .syncFromBackend(data);
+        }
+      } else {
+        // Redirect ke login hanya jika 401 (token expired/invalid)
+        final statusCode = response['statusCode'];
+        if (statusCode == 401) {
+          await _authService.clearLocalSession();
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const LoginPage()),
+            );
+          }
+        }
+        // Koneksi gagal (server mati) = biarkan tetap di dashboard dengan data lokal
+      }
+    } catch (e) {
+      debugPrint('Error syncing user session: $e');
+    }
   }
 
   Future<void> _loadUnreadCount() async {
     try {
       final result = await _notificationService.getNotifications(tipe: 'semua');
-      if (result['success'] == true) {
+      if (!mounted) return;
+      if (result['success'] == true && result['unread_counts'] != null) {
         final unreadCounts = result['unread_counts'] as Map<String, dynamic>;
-        if (mounted) {
-          setState(() {
-            _unreadCount = unreadCounts['semua'] ?? 0;
-          });
-        }
+        final count = unreadCounts['semua'];
+        setState(() {
+          _unreadCount = (count is int) ? count : int.tryParse(count.toString()) ?? 0;
+        });
       }
     } catch (e) {
       debugPrint('Error loading unread count: $e');
     }
   }
 
-  Future<void> _refreshUserData() async {
-    final result = await _authService.getUser();
-    if (result['success']) {
-      setState(() {
-        _userLocalData = result['data'];
-      });
-    }
-    _loadUnreadCount();
-  }
-
   Future<void> _handleLogout() async {
     setState(() => _isLoading = true);
-
     final result = await _authService.logout();
-
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(result['message']),
-          backgroundColor: Colors.green,
+          backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -95,32 +139,80 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
-  String _getFormattedDate() {
-    final now = DateTime.now();
-    final months = [
-      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-    ];
-    return '${now.day} ${months[now.month - 1]} ${now.year}';
+  String _getRoleLabel(String roleId) {
+    switch (roleId.toLowerCase()) {
+      case 'ceo':
+        return 'CEO / Pemilik Usaha';
+      case 'manager':
+        return 'Manajer';
+      case 'admin':
+        return 'Admin';
+      case 'cashier':
+        return 'Kasir';
+      case 'warehouse':
+        return 'Staff Gudang';
+      case 'employee':
+        return 'Karyawan';
+      default:
+        return 'Pengguna';
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final displayName = _userLocalData?['name'] ?? namaUser;
+    final userProvider = Provider.of<UserProvider>(context);
+    final currentRole = userProvider.kedudukan;
+    final displayName = userProvider.namaLengkap;
+
+    // Define restricted tab pages based on roles
+    Widget tab1 = const InventarisPage();
+    if (!['ceo', 'manager', 'admin', 'warehouse'].contains(currentRole.toLowerCase())) {
+      tab1 = AccessDeniedWidget(
+        currentRole: currentRole,
+        allowedRoles: const ['ceo', 'manager', 'admin', 'warehouse'],
+        onBackToHome: () => setState(() => _currentIndex = 0),
+      );
+    }
+
+    Widget tab2 = const PenjualanPage();
+    if (!['ceo', 'manager', 'admin', 'cashier'].contains(currentRole.toLowerCase())) {
+      tab2 = AccessDeniedWidget(
+        currentRole: currentRole,
+        allowedRoles: const ['ceo', 'manager', 'admin', 'cashier'],
+        onBackToHome: () => setState(() => _currentIndex = 0),
+      );
+    }
+
+    Widget tab3 = const PergerakanPage();
+    if (!['ceo', 'manager', 'admin', 'warehouse'].contains(currentRole.toLowerCase())) {
+      tab3 = AccessDeniedWidget(
+        currentRole: currentRole,
+        allowedRoles: const ['ceo', 'manager', 'admin', 'warehouse'],
+        onBackToHome: () => setState(() => _currentIndex = 0),
+      );
+    }
+
+    Widget tab4 = const LaporanPage();
+    if (!['ceo', 'manager'].contains(currentRole.toLowerCase())) {
+      tab4 = AccessDeniedWidget(
+        currentRole: currentRole,
+        allowedRoles: const ['ceo', 'manager'],
+        onBackToHome: () => setState(() => _currentIndex = 0),
+      );
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFFFAF9F6), // Warm off-white
       body: IndexedStack(
         index: _currentIndex,
         children: [
-          _buildHomeTab(context, displayName),
-          _buildPlaceholderTab("Inventaris", Icons.inventory_2_outlined),
-          const PenjualanPage(),
-          const PergerakanPage(),
-          const LaporanPage(),
+          _buildHomeTab(context, displayName, currentRole),
+          tab1,
+          tab2,
+          tab3,
+          tab4,
         ],
       ),
-      // 5. BOTTOM NAVIGATION
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) {
@@ -130,7 +222,7 @@ class _DashboardPageState extends State<DashboardPage> {
         },
         type: BottomNavigationBarType.fixed,
         backgroundColor: Colors.white,
-        selectedItemColor: const Color(0xFF8B5E3C), // Consistent coklat abon
+        selectedItemColor: AppColors.primary,
         unselectedItemColor: Colors.grey.shade400,
         showUnselectedLabels: true,
         selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
@@ -166,21 +258,20 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // --- Home Tab View Extraction ---
-  Widget _buildHomeTab(BuildContext context, String displayName) {
+  Widget _buildHomeTab(BuildContext context, String displayName, String role) {
     return SafeArea(
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 1. HEADER (Background Coklat Keemasan)
+            // 1. HEADER (Gradient Coklat Keemasan)
             Container(
               padding: const EdgeInsets.fromLTRB(24, 28, 24, 32),
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    Color(0xFF8C6239), // Coklat keemasan medium
-                    Color(0xFF5C3A21), // Coklat keemasan tua
+                    AppColors.primary,
+                    Color(0xFF5C3A21),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -201,30 +292,19 @@ class _DashboardPageState extends State<DashboardPage> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(builder: (context) => const ProfilePage()),
-                          ).then((_) => _refreshUserData());
+                          ).then((_) => _syncUserSession());
                         },
                         child: Row(
                           children: [
-                            // Avatar "M"
-                            CircleAvatar(
-                              radius: 24,
-                              backgroundColor: Colors.white.withOpacity(0.2),
-                              child: Text(
-                                displayName.isNotEmpty ? displayName[0].toUpperCase() : 'M',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 18,
-                                ),
-                              ),
-                            ),
+                            // State-driven ProfilAvatar
+                            const ProfilAvatar(size: 48),
                             const SizedBox(width: 12),
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  'Selamat Datang,',
-                                  style: TextStyle(
+                                Text(
+                                  WaktuHelper.getGreeting(),
+                                  style: const TextStyle(
                                     color: Colors.white70,
                                     fontSize: 12,
                                   ),
@@ -237,6 +317,22 @@ class _DashboardPageState extends State<DashboardPage> {
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
+                                const SizedBox(height: 2),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    _getRoleLabel(role),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
                               ],
                             ),
                           ],
@@ -247,7 +343,10 @@ class _DashboardPageState extends State<DashboardPage> {
                         children: [
                           IconButton(
                             icon: const Icon(Icons.refresh_rounded, color: Colors.white),
-                            onPressed: _refreshUserData,
+                            onPressed: () {
+                              _syncUserSession();
+                              _loadUnreadCount();
+                            },
                             tooltip: 'Refresh Data',
                           ),
                           IconButton(
@@ -283,13 +382,27 @@ class _DashboardPageState extends State<DashboardPage> {
                     ],
                   ),
                   const SizedBox(height: 24),
-                  Text(
-                    _getFormattedDate(),
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
+                  // Digital Clock Header
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        _dateString,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Text(
+                        _timeString,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -315,7 +428,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         value: penjualanHariIni,
                         subtitle: '',
                         icon: Icons.monetization_on_outlined,
-                        color: const Color(0xFF8C6239),
+                        color: AppColors.primary,
                       ),
                       _buildSummaryCard(
                         title: 'Transaksi',
@@ -363,7 +476,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
+                                  color: AppColors.textDark,
                                 ),
                               ),
                               Text(
@@ -371,7 +484,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
-                                  color: Color(0xFF8C6239),
+                                  color: AppColors.primary,
                                 ),
                               ),
                             ],
@@ -381,7 +494,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             'Grafik aktivitas penjualan produk',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey,
+                              color: AppColors.textGrey,
                             ),
                           ),
                           const SizedBox(height: 24),
@@ -446,7 +559,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
-                              color: Colors.black87,
+                              color: AppColors.textDark,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -454,7 +567,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             'Daftar produk dengan jumlah stok di bawah batas minimal',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey,
+                              color: AppColors.textGrey,
                             ),
                           ),
                           const SizedBox(height: 20),
@@ -497,12 +610,12 @@ class _DashboardPageState extends State<DashboardPage> {
                     onPressed: _isLoading ? null : _handleLogout,
                     icon: const Icon(Icons.logout_rounded, size: 18),
                     label: const Text(
-                      'LOGOUT',
+                      'LOGOUT JABATAN',
                       style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.8),
                     ),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.red.shade700,
-                      side: BorderSide(color: Colors.red.shade200),
+                      foregroundColor: AppColors.alert,
+                      side: const BorderSide(color: Colors.redAccent, width: 1.2),
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
@@ -511,39 +624,6 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                 ],
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // --- Placeholder Screen for other tabs ---
-  Widget _buildPlaceholderTab(String title, IconData icon) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: const Color(0xFF8B5E3C).withOpacity(0.08),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, size: 64, color: const Color(0xFF8B5E3C)),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              "Menu $title",
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "Fitur pengelolaan $title akan segera hadir untuk mempermudah operasional UMKM Anda.",
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13, color: Colors.grey, height: 1.4),
             ),
           ],
         ),
@@ -581,7 +661,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 11,
-                      color: Colors.grey,
+                      color: AppColors.textGrey,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -595,7 +675,7 @@ class _DashboardPageState extends State<DashboardPage> {
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Colors.black87,
+                color: AppColors.textDark,
               ),
             ),
             const SizedBox(height: 2),
@@ -603,7 +683,7 @@ class _DashboardPageState extends State<DashboardPage> {
               subtitle,
               style: const TextStyle(
                 fontSize: 9,
-                color: Colors.grey,
+                color: AppColors.textGrey,
               ),
             ),
           ],

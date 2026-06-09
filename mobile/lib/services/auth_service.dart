@@ -1,11 +1,11 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
+import '../models/register_model.dart';
 
 class AuthService {
-  static const String defaultBaseUrl = ApiConfig.defaultBaseUrl;
+  static final String defaultBaseUrl = ApiConfig.defaultBaseUrl;
 
   static Future<String> getBaseUrl() async {
     final prefs = await SharedPreferences.getInstance();
@@ -28,38 +28,46 @@ class AuthService {
     await prefs.setBool('is_custom_api_url', false);
   }
 
-  /// Register new user
-  Future<Map<String, dynamic>> register({
-    required String name,
-    required String email,
-    required String password,
-    required String role,
-  }) async {
+  /// Register new user with full details (including profile photo & business logo files)
+  Future<Map<String, dynamic>> register(RegisterModel model) async {
     final baseUrl = await getBaseUrl();
     final url = Uri.parse('$baseUrl/register');
 
     try {
-      final response = await http.post(
-        url,
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'name': name,
-          'email': email,
-          'password': password,
-          'role': role,
-        }),
-      );
+      final request = http.MultipartRequest('POST', url);
+      
+      // Headers
+      request.headers['Accept'] = 'application/json';
+      
+      // Fields
+      model.toMap().forEach((key, value) {
+        request.fields[key] = value;
+      });
+
+      // Files
+      if (model.fotoProfil != null && model.fotoProfil!.isNotEmpty) {
+        request.files.add(await http.MultipartFile.fromPath('photo', model.fotoProfil!));
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
 
       final responseData = jsonDecode(response.body);
 
-      if (response.statusCode == 201) {
+      if (response.statusCode == 201 && responseData['success'] == true) {
+        final token = responseData['token'];
+        final userData = responseData['user'];
+
+        // Save token and user details in SharedPreferences automatically
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('auth_token', token);
+        await prefs.setString('user_data', jsonEncode(userData));
+
         return {
           'success': true,
           'message': responseData['message'] ?? 'Registrasi berhasil',
-          'data': responseData['data']
+          'token': token,
+          'user': userData
         };
       } else {
         return {
@@ -123,7 +131,7 @@ class AuthService {
     } catch (e) {
       return {
         'success': false,
-        'message': 'Terjadi kesalahan koneksi server: $e'
+        'message': 'Terjadi kesalahan koneksi server ke $url. Detail: $e'
       };
     }
   }
@@ -165,6 +173,7 @@ class AuthService {
       } else {
         return {
           'success': false,
+          'statusCode': response.statusCode,
           'message': responseData['message'] ?? 'Gagal mengambil data user'
         };
       }
@@ -476,7 +485,7 @@ class AuthService {
     } catch (e) {
       return {
         'success': false,
-        'message': 'Server tidak merespon (Offline). Pastikan Laptop & HP tersambung ke WiFi yang sama. Detail: $e',
+        'message': 'Server tidak merespon (Offline) pada $url. Pastikan Laptop & HP tersambung ke WiFi yang sama. Detail: $e',
       };
     }
   }

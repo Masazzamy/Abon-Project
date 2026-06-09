@@ -82,15 +82,63 @@ Aplikasi mobile kini menggunakan struktur arsitektur bersih untuk interaksi jari
 ```
 mobile/lib/
 ├── api/
-│   └── api_client.dart       # HTTP client utama dengan auto-timeout & error handling global
+│   └── api_client.dart              # HTTP client utama dengan auto-timeout & error handling global
 ├── config/
-│   └── api_config.dart      # Konfigurasi IP & Base URL (diperbarui otomatis oleh .bat)
+│   └── api_config.dart              # Konfigurasi IP & Base URL (diperbarui otomatis oleh .bat)
+├── helpers/
+│   ├── ekspor_helper.dart           # Export Excel, PDF, CSV
+│   ├── format_helper.dart           # Format Rupiah, angka
+│   └── waktu_helper.dart            # Tanggal, salam, zona waktu Indonesia
 ├── models/
 │   ├── notification_model.dart
-│   ├── product_model.dart    # Model data produk
+│   ├── product_model.dart           # Model data produk
+│   ├── register_model.dart          # Model registrasi (3-step)
 │   └── user_model.dart
-└── services/
-    ├── auth_service.dart     # Service autentikasi (login, register, logout, ping)
-    ├── notification_service.dart
-    └── product_service.dart  # Service manajemen produk (GET products)
+├── pages/
+│   ├── dashboard_page.dart          # Home + 5 tab navigasi dengan RBAC
+│   ├── daftar_page.dart             # Registrasi 3 langkah + 6 role
+│   ├── inventaris_page.dart         # Manajemen stok dengan +/- cepat
+│   ├── laporan_page.dart            # Laporan keuangan, penjualan, stok
+│   ├── login_page.dart
+│   ├── lupa_password_page.dart      # Reset password via email
+│   ├── notifikasi_page.dart
+│   ├── penjualan_page.dart
+│   ├── pergerakan_page.dart
+│   ├── profile_page.dart
+│   └── reset_password_page.dart
+├── providers/
+│   └── user_provider.dart           # State management profil pengguna
+├── services/
+│   ├── auth_service.dart            # Login, register, logout, getUser
+│   ├── notification_service.dart
+│   └── product_service.dart         # CRUD produk + adjustStock()
+└── widgets/
+    ├── abon_logo.dart
+    ├── access_denied_widget.dart    # Widget pembatasan akses per role
+    ├── profil_avatar.dart           # Avatar foto/inisial dari provider
+    ├── profile_header.dart
+    └── settings_tile.dart
 ```
+
+---
+
+## 👥 Akun Test (Setelah migrate:fresh --seed)
+
+| Role      | Email              | Password   | Akses                              |
+|-----------|--------------------|------------|------------------------------------|
+| CEO       | ceo@abon.com       | password   | Semua fitur tanpa batas            |
+| Admin     | admin@abon.com     | password   | Inventaris, Penjualan, Pergerakan  |
+| Kasir     | kasir@abon.com     | password   | Penjualan saja                     |
+| Gudang    | gudang@abon.com    | password   | Inventaris & Pergerakan Stok       |
+
+---
+
+## 🔑 Role & Akses
+
+| Halaman       | CEO | Manajer | Admin | Kasir | Gudang | Karyawan |
+|---------------|-----|---------|-------|-------|--------|----------|
+| Dashboard     | ✅  | ✅      | ✅    | ✅    | ✅     | ✅       |
+| Inventaris    | ✅  | ✅      | ✅    | ❌    | ✅     | ❌       |
+| Penjualan     | ✅  | ✅      | ✅    | ✅    | ❌     | ❌       |
+| Pergerakan    | ✅  | ✅      | ✅    | ❌    | ✅     | ❌       |
+| Laporan       | ✅  | ✅      | ❌    | ❌    | ❌     | ❌       |

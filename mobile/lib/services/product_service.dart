@@ -26,4 +26,19 @@ class ProductService {
       };
     }
   }
+
+  /// Adjust stock for a product
+  Future<Map<String, dynamic>> adjustStock({
+    required int productId,
+    required String type, // 'in' or 'out'
+    required int quantity,
+    String? reason,
+  }) async {
+    final response = await ApiClient.post('products/$productId/adjust-stock', {
+      'type': type,
+      'quantity': quantity,
+      'reason': reason,
+    });
+    return response;
+  }
 }
